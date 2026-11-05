@@ -1,39 +1,53 @@
 
-const CACHE_NAME = 'autovault-v03';
+const CACHE_NAME = 'autovault-public-beta-v2';
+
+const APP_FILES = [
+  './',
+  './index.html'
+];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache =>
-      cache.addAll([
-        './',
-        './index.html',
-        './manifest.webmanifest',
-        './icon.png',
-        './icon-512.png'
-      ])
-    )
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(APP_FILES))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
         keys
-          .filter(key => key.startsWith('autovault-') && key !== CACHE_NAME)
+          .filter(key => key !== CACHE_NAME)
           .map(key => caches.delete(key))
-      )
-    )
+      );
+      await self.clients.claim();
+    })()
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
+  const request = event.request;
 
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
-  );
+  if (request.method !== 'GET') return;
+
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response.ok) {
+            const copy = response.clone();
+            event.waitUntil(
+              caches.open(CACHE_NAME).then(cache =>
+                cache.put('./index.html', copy)
+              )
+            );
+          }
+          return response;
+        })
+        .catch(() => caches.match('./index.html'))
+    );
+  }
 });
-

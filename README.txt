@@ -1,3 +1,4 @@
-AUTOVAULT 0.2 — PWA
-Publicare: încărcați fișierele din folderul autovault la rădăcina unui repository GitHub Pages public. Settings > Pages > Deploy from branch > main / root. Deschideți URL-ul în Safari > Share > Add to Home Screen.
-Datele se salvează local. Exportați periodic backup JSON. Butoanele i oferă informații generale despre întreținere, nu diagnostice.
+VoroCar 2.6.3 — sigla oficială VC suprapusă cu punct-ochi în C.
+Încarcă toate fișierele din acest folder în rădăcina repository-ului GitHub Pages, înlocuind fișierele cu același nume.
+Păstrează URL-ul site-ului și nu șterge datele browserului.
+Manifestul și cheile de stocare a mașinilor rămân neschimbate.

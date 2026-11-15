@@ -957,4 +957,33 @@ render();</script><style>
  }
  document.addEventListener('click',()=>setTimeout(add,0));add();
 })();
+</script><style id="vc28-report-css">
+#vc28Report{display:none}
+@media print{body>*:not(#vc28Report){display:none!important}#vc28Report{display:block!important;background:#fff!important;color:#111!important;font:12px Arial,sans-serif!important;padding:16px}#vc28Report *{color:#111!important;background:transparent!important;box-shadow:none!important}#vc28Report table{border-collapse:collapse;width:100%;margin:12px 0}#vc28Report td,#vc28Report th{border:1px solid #bbb;padding:7px;text-align:left}#vc28Report h1{font-size:23px}#vc28Report h2{font-size:17px;margin-top:22px}#vc28Report section{break-inside:avoid}}
+</style>
+<script id="vc28-report-js">
+(function(){'use strict';
+const money=n=>Number(n||0).toLocaleString('ro-RO',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const validCost=x=>x!==''&&x!=null&&Number.isFinite(Number(x))&&Number(x)>=0?Number(x):0;
+function report(){
+ if(typeof state==='undefined'||!Array.isArray(state.cars))return alert('Datele nu sunt disponibile.');
+ const cars=state.cars;const today=new Date().toLocaleDateString('ro-RO');
+ let html='<h1>VOROCAR · RAPORT FINANCIAR</h1><p>Generat: '+esc(today)+' · Monedele nu sunt convertite. Valorile sunt doar cele înregistrate în aplicație.</p>';
+ if(!cars.length)html+='<p>Nu există mașini în garaj.</p>';
+ for(const c of cars){const fuel=(c.fuels||[]).reduce((n,x)=>n+validCost(x.cost),0),service=(c.services||[]).reduce((n,x)=>n+validCost(x.cost),0),docs=(c.documents||[]).reduce((n,x)=>n+validCost(x.cost),0),currency=c.currency||'RON';
+ html+='<section><h2>'+esc(c.make)+' '+esc(c.model)+' · '+esc(c.year||'')+'</h2><p>Număr: '+esc(c.plate||'—')+' · Kilometraj: '+esc(c.km||0)+' km · Monedă: '+esc(currency)+'</p><table><thead><tr><th>Categorie</th><th>Înregistrări</th><th>Total</th></tr></thead><tbody><tr><td>Carburant</td><td>'+(c.fuels||[]).length+'</td><td>'+money(fuel)+'</td></tr><tr><td>Întreținere</td><td>'+(c.services||[]).length+'</td><td>'+money(service)+'</td></tr><tr><td>Documente</td><td>'+(c.documents||[]).length+'</td><td>'+money(docs)+'</td></tr><tr><th>Total înregistrat</th><th></th><th>'+money(fuel+service+docs)+' '+esc(currency)+'</th></tr></tbody></table>';
+ const today0=new Date();today0.setHours(0,0,0,0);let alerts=[];
+ for(const d of c.documents||[]){if(!/^\d{4}-\d{2}-\d{2}$/.test(d.expiry||''))continue;const days=Math.round((new Date(d.expiry+'T00:00:00')-today0)/86400000);if(days<=30)alerts.push(esc(d.type||'Document')+': '+esc(d.expiry)+' ('+(days<0?'depășit':days+' zile')+')')}
+ for(const s of c.services||[]){if(!/^\d{4}-\d{2}-\d{2}$/.test(s.nextDate||''))continue;const days=Math.round((new Date(s.nextDate+'T00:00:00')-today0)/86400000);if(days<=30)alerts.push(esc(s.type||'Revizie')+': '+esc(s.nextDate)+' ('+(days<0?'depășit':days+' zile')+')')}
+ html+='<p><strong>Termene în următoarele 30 de zile / depășite:</strong> '+(alerts.length?alerts.join('; '):'Niciun termen identificat')+'</p></section>';
+ }
+ html+='<p>Raport orientativ. Nu reprezintă document contabil sau dovadă a efectuării unei revizii.</p>';
+ let root=document.getElementById('vc28Report');if(!root){root=document.createElement('div');root.id='vc28Report';document.body.appendChild(root)}root.innerHTML=html;
+ window.print();
+}
+document.addEventListener('click',e=>{if(e.target.closest('#vc28Print'))report()});
+function attach(){const d=document.getElementById('dashboard');if(!d||d.querySelector('#vc28Print'))return;const panel=d.querySelector('.panel');if(!panel)return;const b=document.createElement('button');b.id='vc28Print';b.type='button';b.className='btn secondary';b.textContent='Exportă raport PDF / Tipărește';b.style.margin='12px 0';const h=panel.querySelector('h2');if(h)h.insertAdjacentElement('afterend',b);else panel.prepend(b)}
+const observer=new MutationObserver(()=>attach());const dash=document.getElementById('dashboard');if(dash){observer.observe(dash,{childList:true});attach()}
+})();
 </script></body></html>

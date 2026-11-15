@@ -616,7 +616,7 @@ function printable(c){const row=(cells)=>'<tr>'+cells.map(x=>'<td>'+esc(x)+'</td
  section('Alimentări',['Data','Km','Litri','Cost'],(c.fuels||[]).map(f=>[f.date||'',f.km??'',f.liters??'',f.cost??'']))+
  '<p class="av-print-muted">Atașamentele originale nu sunt incluse în acest raport. Poți salva ca PDF din meniul de imprimare al dispozitivului.</p>';
 }
-document.getElementById('garage').addEventListener('click',e=>{if(!e.target.closest('#avPassport'))return;const c=state.cars.find(x=>x.id===selectedCarId);if(!c)return;let box=document.getElementById('avPrintArea');if(!box){box=document.createElement('div');box.id='avPrintArea';document.body.appendChild(box)}box.innerHTML=printable(c);document.body.classList.remove('vc-print-finance');document.body.classList.add('vc-print-passport');setTimeout(()=>window.print(),150)});
+document.getElementById('garage').addEventListener('click',e=>{if(!e.target.closest('#avPassport'))return;const c=state.cars.find(x=>x.id===selectedCarId);if(!c)return;let box=document.getElementById('avPrintArea');if(!box){box=document.createElement('div');box.id='avPrintArea';document.body.appendChild(box)}vcOpenPrintableReport('VoroCar - Pașaport auto',printable(c))});
 })();
 </script><script>(function(){document.addEventListener('click',function(e){const tab=e.target.closest('[data-car-tab]');if(!tab)return;requestAnimationFrame(()=>requestAnimationFrame(()=>{const stage=document.querySelector('#garage .av-shadow-garage');if(stage){stage.classList.remove('av-reveal');void stage.offsetWidth;stage.classList.add('av-reveal')}}))},true)})();
 
@@ -979,12 +979,17 @@ function report(){
  html+='<p><strong>Termene în următoarele 30 de zile / depășite:</strong> '+(alerts.length?alerts.join('; '):'Niciun termen identificat')+'</p></section>';
  }
  html+='<p>Raport orientativ. Nu reprezintă document contabil sau dovadă a efectuării unei revizii.</p>';
- let root=document.getElementById('vc28Report');if(!root){root=document.createElement('div');root.id='vc28Report';document.body.appendChild(root)}root.innerHTML=html;
- document.body.classList.remove('vc-print-passport');document.body.classList.add('vc-print-finance');
- setTimeout(()=>window.print(),150);
+ vcOpenPrintableReport('VoroCar - Raport financiar',html);
 }
 document.addEventListener('click',e=>{if(e.target.closest('#vc28Print'))report()});
 function attach(){const d=document.getElementById('dashboard');if(!d||d.querySelector('#vc28Print'))return;const panel=d.querySelector('.panel');if(!panel)return;const b=document.createElement('button');b.id='vc28Print';b.type='button';b.className='btn secondary';b.textContent='Exportă raport PDF / Tipărește';b.style.margin='12px 0';const h=panel.querySelector('h2');if(h)h.insertAdjacentElement('afterend',b);else panel.prepend(b)}
 const observer=new MutationObserver(()=>attach());const dash=document.getElementById('dashboard');if(dash){observer.observe(dash,{childList:true});attach()}
 })();
-</script><script>window.addEventListener('afterprint',()=>document.body.classList.remove('vc-print-passport','vc-print-finance'));</script></body></html>
+</script><script>window.addEventListener('afterprint',()=>document.body.classList.remove('vc-print-passport','vc-print-finance'));</script><script id="vc282-standalone">
+function vcOpenPrintableReport(title,content){
+ const w=window.open('','_blank');
+ if(!w){alert('Permite deschiderea unei ferestre noi pentru raport.');return;}
+ const page='<!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+title+'</title><style>body{font:15px/1.5 Arial,sans-serif;background:white;color:#111;margin:24px;overflow-wrap:anywhere}h1{font-size:24px}h2{font-size:19px;margin-top:24px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #bbb;padding:7px;text-align:left}section{break-inside:avoid}button{background:#171717;color:white;border:0;padding:12px 18px;border-radius:8px;font-size:16px;margin-bottom:18px}@media print{button{display:none}body{margin:8mm;font-size:11px}}</style></head><body><button onclick="window.print()">Salvează / Tipărește PDF</button>'+content+'</body></html>';
+ w.document.open();w.document.write(page);w.document.close();w.focus();
+}
+</script></body></html>

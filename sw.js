@@ -1,5 +1,5 @@
 /* VoroCar 2.6.3 · network-first navigation, offline fallback */
-const CACHE='vorocar-2-6-4-vehicle-photos-05';
+const CACHE='vorocar-2-6-6-full-export-01';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon.png','./icon-512.png','./icon-maskable-512.png','./apple-touch-icon.png','./favicon-32.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>(k.startsWith('autovault-')||k.startsWith('vorocar-'))&&k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});

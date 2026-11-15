@@ -851,4 +851,37 @@ render();</script><style>
  });
 })();
 </script>
-</body></html>
+<script>
+/* VoroCar 2.6.6: export complet, doar citire; nu modifică datele utilizatorului. */
+(function(){
+ const photoPrefix='vorocar-vehicle-photo-v1-';
+ function fileToDataURL(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error);r.readAsDataURL(file)})}
+ async function fullBackup(){
+  const btn=document.getElementById('vc266Export');if(btn){btn.disabled=true;btn.textContent='Se pregătește backupul…'}
+  try{
+   const raw=localStorage.getItem('autovault-v01');if(!raw)throw Error('Nu există date de exportat.');
+   const data=JSON.parse(raw);if(!Array.isArray(data.cars))throw Error('Datele mașinilor nu sunt valide.');
+   const photos={},attachments={},missing=[];
+   for(const c of data.cars){const photo=localStorage.getItem(photoPrefix+c.id);if(photo)photos[c.id]=photo}
+   for(const c of data.cars)for(const d of (c.documents||[]))if(d.hasAttachment){
+    try{const f=await getDocFile(d.id);if(!f){missing.push(d.id);continue}attachments[d.id]={name:f.name||d.filename||'atasament',type:f.type||'application/octet-stream',data:await fileToDataURL(f)}}
+    catch(e){missing.push(d.id)}
+   }
+   if(missing.length){alert('Export oprit: '+missing.length+' atașamente nu au putut fi citite. Backupul ar fi incomplet.');return}
+   const backup={format:'vorocar-full-backup',version:1,exportedAt:new Date().toISOString(),data,photos,attachments};
+   const blob=new Blob([JSON.stringify(backup)],{type:'application/json'});
+   if(blob.size>150*1024*1024){alert('Backupul depășește 150 MB. Contactează suportul înainte de export.');return}
+   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='VoroCar-COMPLET-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+   alert('Export pregătit: '+data.cars.length+' mașini, '+Object.keys(photos).length+' fotografii și '+Object.keys(attachments).length+' atașamente. Verifică fișierul în Descărcări / Fișiere.');
+  }catch(e){alert('Backupul complet nu a putut fi creat: '+(e.message||e))}
+  finally{if(btn){btn.disabled=false;btn.textContent='Export complet (inclusiv fișiere)'}}
+ }
+ function add(){if(document.getElementById('vc266Export'))return;
+  const settings=document.querySelector('#av261Export')?.parentElement||document.querySelector('#av26Export')?.parentElement||document.querySelector('#export')?.parentElement;
+  if(!settings)return;
+  const btn=document.createElement('button');btn.id='vc266Export';btn.type='button';btn.className='btn secondary';btn.textContent='Export complet (inclusiv fișiere)';btn.addEventListener('click',fullBackup);settings.appendChild(btn);
+  const note=document.createElement('p');note.className='muted';note.textContent='Exportul complet include fotografiile și atașamentele. Restaurarea completă va fi adăugată într-o versiune următoare. Păstrează și backupul JSON obișnuit.';settings.appendChild(note);
+ }
+ document.addEventListener('click',()=>setTimeout(add,0));add();
+})();
+</script></body></html>

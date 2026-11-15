@@ -880,7 +880,80 @@ render();</script><style>
   const settings=document.querySelector('#av261Export')?.parentElement||document.querySelector('#av26Export')?.parentElement||document.querySelector('#export')?.parentElement;
   if(!settings)return;
   const btn=document.createElement('button');btn.id='vc266Export';btn.type='button';btn.className='btn secondary';btn.textContent='Export complet (inclusiv fișiere)';btn.addEventListener('click',fullBackup);settings.appendChild(btn);
-  const note=document.createElement('p');note.className='muted';note.textContent='Exportul complet include fotografiile și atașamentele. Restaurarea completă va fi adăugată într-o versiune următoare. Păstrează și backupul JSON obișnuit.';settings.appendChild(note);
+  const note=document.createElement('p');note.className='muted';note.textContent='Exportul complet include fotografiile și atașamentele. Restaurarea completă este disponibilă prin butonul Import complet. Păstrează și backupul JSON obișnuit.';settings.appendChild(note);
+ }
+ document.addEventListener('click',()=>setTimeout(add,0));add();
+})();
+</script><script>
+/* VoroCar 2.6.7 — restaurare completă, fără ștergerea automată a atașamentelor vechi. */
+(function(){
+ const PREFIX='vorocar-vehicle-photo-v1-', KEY='autovault-v01';
+ const $id=id=>document.getElementById(id);
+ const pause=()=>new Promise(resolve=>setTimeout(resolve,0));
+ function decodeDataURL(value){
+  if(typeof value!=='string'||!/^data:[^;,]*;base64,[A-Za-z0-9+/=\s]+$/.test(value))throw Error('Atașament invalid în backup.');
+  const comma=value.indexOf(','),mime=value.slice(5,value.indexOf(';'))||'application/octet-stream';
+  const binary=atob(value.slice(comma+1).replace(/\s/g,'')),bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return new Blob([bytes],{type:mime});
+ }
+ function check(v){
+  if(!v||v.format!=='vorocar-full-backup'||v.version!==1||!v.data||!Array.isArray(v.data.cars)||v.data.cars.length>100||!v.photos||!v.attachments||Array.isArray(v.photos)||Array.isArray(v.attachments))throw Error('Fișierul nu este un backup complet VoroCar compatibil.');
+  const ids=new Set(),docIds=new Set();
+  for(const c of v.data.cars){
+   if(!c||typeof c.id!=='string'||!c.id||ids.has(c.id)||typeof c.make!=='string'||typeof c.model!=='string'||!Number.isFinite(c.km)||!Array.isArray(c.services)||c.services.length>5000)throw Error('Datele mașinilor sunt invalide.');
+   ids.add(c.id);
+   for(const d of c.documents||[]){if(!d||typeof d.id!=='string'||!d.id||docIds.has(d.id))throw Error('Document invalid sau duplicat.');docIds.add(d.id);if(d.hasAttachment&&!Object.hasOwn(v.attachments,d.id))throw Error('Lipsește atașamentul '+d.id);}
+  }
+  for(const [id,value] of Object.entries(v.photos)){if(!ids.has(id)||typeof value!=='string'||!value.startsWith('data:image/'))throw Error('Fotografie invalidă.');}
+  for(const [id,value] of Object.entries(v.attachments)){if(!docIds.has(id)||!value||typeof value.name!=='string'||typeof value.data!=='string')throw Error('Atașament neasociat sau invalid.');}
+  return v;
+ }
+ async function restore(file){
+  const btn=$id('vc267Restore');btn.disabled=true;btn.textContent='Se verifică backupul…';
+  try{
+   if(file.size>150*1024*1024)throw Error('Fișierul depășește limita de 150 MB.');
+   const backup=check(JSON.parse(await file.text()));
+   const photos=Object.entries(backup.photos),attachments=Object.entries(backup.attachments);
+   const cars=backup.data.cars;
+   const preview=cars.slice(0,8).map(c=>'• '+c.make+' '+c.model).join('\n');
+   if(!confirm('RESTAURARE COMPLETĂ VOROCAR\n\nMașini: '+cars.length+'\nFotografii: '+photos.length+'\nAtașamente: '+attachments.length+'\n\n'+preview+'\n\nDatele curente vor fi înlocuite. Continui?'))return;
+   if(!confirm('ULTIMA CONFIRMARE\n\nAi salvat un backup complet al datelor ACTUALE?\n\nNu continua dacă nu ai un backup verificat.'))return;
+   // Validare înainte de prima modificare.
+   const blobs=[];
+   for(const [id,v] of attachments){const blob=decodeDataURL(v.data);if(blob.size>8*1024*1024)throw Error('Un atașament depășește 8 MB.');blobs.push([id,new File([blob],v.name||'document',{type:v.type||blob.type})]);await pause()}
+   const existing=localStorage.getItem(KEY),oldPhotos={};
+   for(const c of cars){oldPhotos[c.id]=localStorage.getItem(PREFIX+c.id)}
+   // Stocăm întâi fișierele, apoi fotografiile și abia la final comutăm datele principale.
+   // Atașamentele curente nu sunt șterse, pentru a putea reveni la backupul precedent.
+   btn.textContent='Se restaurează atașamentele…';
+   for(const [id,blob] of blobs){await storeDocFile(id,blob)}
+   btn.textContent='Se restaurează fotografiile…';
+   const changed=[];
+   try{
+    for(const c of cars){const id=c.id;const value=Object.hasOwn(backup.photos,id)?backup.photos[id]:null;
+     if(value===null)localStorage.removeItem(PREFIX+id);else localStorage.setItem(PREFIX+id,value);
+     changed.push(id);
+    }
+    localStorage.setItem(KEY,JSON.stringify(backup.data));
+   }catch(err){
+    for(const id of changed){try{const prev=oldPhotos[id];if(prev===null)localStorage.removeItem(PREFIX+id);else localStorage.setItem(PREFIX+id,prev)}catch(e){}}
+    if(existing!==null)try{localStorage.setItem(KEY,existing)}catch(e){}
+    throw Error('Spațiu insuficient sau salvare blocată. Datele principale au fost readuse la starea anterioară.');
+   }
+   alert('Restaurare finalizată. Se reîncarcă VoroCar pentru afișarea datelor.');
+   location.reload();
+  }catch(e){alert('Restaurarea nu a fost finalizată: '+(e.message||e))}
+  finally{btn.disabled=false;btn.textContent='Import complet (inclusiv fișiere)';$id('vc267File').value=''}
+ }
+ function add(){
+  if($id('vc267Restore'))return;
+  const anchor=$id('vc266Export');if(!anchor)return;
+  const input=document.createElement('input');input.type='file';input.id='vc267File';input.accept='.json,application/json';input.hidden=true;
+  const button=document.createElement('button');button.type='button';button.id='vc267Restore';button.className='btn secondary';button.textContent='Import complet (inclusiv fișiere)';
+  button.addEventListener('click',()=>input.click());input.addEventListener('change',()=>{if(input.files[0])restore(input.files[0])});
+  anchor.insertAdjacentElement('afterend',button);button.insertAdjacentElement('afterend',input);
+  const note=anchor.parentElement.querySelector('p.muted');if(note&&note.textContent.includes('Restaurarea completă'))note.textContent='Backupul complet include fotografii și documente. Înainte de import, exportă datele actuale. Importul înlocuiește garajul curent.';
  }
  document.addEventListener('click',()=>setTimeout(add,0));add();
 })();
